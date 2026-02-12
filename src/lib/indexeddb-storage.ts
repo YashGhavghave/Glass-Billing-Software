@@ -27,7 +27,7 @@ export const indexedDBStorage = {
     }
     const db = await getDB();
     const value = await db.get('key-val', name);
-    return value || null;
+    return value ?? null;
   },
   setItem: async (name: string, value: any): Promise<void> => {
     if (typeof window === 'undefined') {

@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -504,7 +503,7 @@ export function CustomDesignToolbar({
             {actions.map(action => {
                  let isDisabled = false;
                  let actionFunc = () => {};
-                 let label: string = action.label;
+                 let label = action.label;
 
                  if (action.id === 'clear') {
                     if (isElementSelected) {

@@ -30,8 +30,8 @@ type DragInfo = {
   element: CanvasElement;
   startX: number;
   startY: number;
-  elementStartX?: number;
-  elementStartY?: number;
+  elementStartX: number;
+  elementStartY: number;
   elementEndX?: number;
   elementEndY?: number;
   elementStartWidth?: number;
@@ -1989,6 +1989,7 @@ export function CustomDesignCanvas({ fullscreenContainerRef }: { fullscreenConta
                         <g key={box.id} onDoubleClick={(e) => handleTextDoubleClick(e, box)} transform={`rotate(${rotation} ${center.x} ${center.y})`}>
                             <foreignObject x={box.x} y={box.y} width={box.width} height={box.height}>
                                 <div
+                                    xmlns="http://www.w3.org/1999/xhtml"
                                     style={{
                                         width: '100%',
                                         height: '100%',

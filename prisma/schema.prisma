@@ -1,9 +1,10 @@
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]
+  binaryTargets = ["debian-openssl-3.0.x", "windows"]
 }
 
 datasource db {
@@ -31,7 +32,6 @@ model User {
   avatar        String?
   timezone      String?
   language      String    @default("en")
-  isDeleted     Boolean   @default(false)
   
   // Timestamps
   createdAt     DateTime  @default(now()) @map("created_at")
@@ -39,22 +39,12 @@ model User {
   lastLoginAt   DateTime? @map("last_login_at")
   
   // Relationships
-  customerProjects      Project[] @relation("CustomerProjects")
-  salesRepProjects      Project[] @relation("SalesRepProjects")
-  createdProjects       Project[] @relation("CreatedProjects")
-  updatedProjects       Project[] @relation("UpdatedProjects")
-
-  createdQuotes         Quote[]   @relation("CreatedQuotes")
+  projects      Project[] @relation("CustomerProjects")
+  assignedProjects Project[] @relation("SalesRepProjects")
+  quotes        Quote[]
+  orders        Order[]
+  notifications Notification[]
   
-  customerOrders        Order[]   @relation("CustomerOrders")
-  createdOrders         Order[]   @relation("CreatedOrders")
-  updatedOrders         Order[]   @relation("UpdatedOrders")
-
-  notifications         Notification[]
-  
-  @@index([companyId])
-  @@index([role])
-  @@index([isDeleted])
   @@map("users")
 }
 
@@ -99,8 +89,7 @@ model Company {
   // Settings
   markupPercent   Decimal? @map("markup_percent") @db.Decimal(5, 2)
   discountLimit   Decimal? @map("discount_limit") @db.Decimal(5, 2)
-  isDeleted       Boolean  @default(false)
-
+  
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -109,11 +98,7 @@ model Company {
   users           User[]
   projects        Project[]
   suppliers       Supplier[]
-  profiles        Profile[]
-  hardware        Hardware[]
-  glassTypes      GlassType[]
   
-  @@index([isDeleted])
   @@map("companies")
 }
 
@@ -153,13 +138,10 @@ model Profile {
   specifications  Json?
   color           String?
   finish          String?
-  isDeleted       Boolean  @default(false)
   
-  // Relationships
+  // Supplier
   supplierId      String?  @map("supplier_id")
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  companyId       String?  @map("company_id")
-  company         Company? @relation(fields: [companyId], references: [id])
   
   // Images
   imageUrl        String?  @map("image_url")
@@ -172,9 +154,6 @@ model Profile {
   designItems     DesignItem[]
   inventoryTransactions InventoryTransaction[]
   
-  @@index([supplierId])
-  @@index([companyId])
-  @@index([isDeleted])
   @@map("profiles")
 }
 
@@ -208,7 +187,6 @@ model Hardware {
   material        String?
   finish          String?
   size            String?
-  isDeleted       Boolean  @default(false)
   
   // Pricing
   unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
@@ -217,11 +195,9 @@ model Hardware {
   stockQuantity   Int      @default(0) @map("stock_quantity")
   minStock        Int      @default(5) @map("min_stock")
   
-  // Relationships
+  // Supplier
   supplierId      String?  @map("supplier_id")
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  companyId       String?  @map("company_id")
-  company         Company? @relation(fields: [companyId], references: [id])
   
   // Images
   imageUrl        String?  @map("image_url")
@@ -234,9 +210,6 @@ model Hardware {
   designItems     DesignItem[]
   inventoryTransactions InventoryTransaction[]
   
-  @@index([supplierId])
-  @@index([companyId])
-  @@index([isDeleted])
   @@map("hardware")
 }
 
@@ -271,7 +244,6 @@ model GlassType {
   isLowE          Boolean  @default(false) @map("is_low_e")
   isTinted        Boolean  @default(false) @map("is_tinted")
   tintColor       String?  @map("tint_color")
-  isDeleted       Boolean  @default(false)
   
   // Pricing (per square meter)
   pricePerSqm     Decimal  @map("price_per_sqm") @db.Decimal(10, 2)
@@ -280,11 +252,9 @@ model GlassType {
   stockArea       Decimal  @default(0) @map("stock_area") @db.Decimal(10, 2) // in m²
   minStock        Decimal  @default(10) @map("min_stock") @db.Decimal(10, 2)
   
-  // Relationships
+  // Supplier
   supplierId      String?  @map("supplier_id")
   supplier        Supplier? @relation(fields: [supplierId], references: [id])
-  companyId       String?  @map("company_id")
-  company         Company? @relation(fields: [companyId], references: [id])
   
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
@@ -294,9 +264,6 @@ model GlassType {
   designItems     DesignItem[]
   inventoryTransactions InventoryTransaction[]
   
-  @@index([supplierId])
-  @@index([companyId])
-  @@index([isDeleted])
   @@map("glass_types")
 }
 
@@ -329,7 +296,6 @@ model Supplier {
   // Business Info
   contactPerson   String?  @map("contact_person")
   paymentTerms    String?  @map("payment_terms")
-  isDeleted       Boolean  @default(false)
   
   // Company association
   companyId       String?  @map("company_id")
@@ -344,8 +310,6 @@ model Supplier {
   hardware        Hardware[]
   glassTypes      GlassType[]
   
-  @@index([companyId])
-  @@index([isDeleted])
   @@map("suppliers")
 }
 
@@ -390,13 +354,6 @@ model Project {
   dueDate         DateTime? @map("due_date")
   completedDate   DateTime? @map("completed_date")
   
-  // Audit & Status
-  isDeleted       Boolean  @default(false)
-  createdById     String   @map("created_by_id")
-  createdBy       User     @relation("CreatedProjects", fields: [createdById], references: [id])
-  updatedById     String?  @map("updated_by_id")
-  updatedBy       User?    @relation("UpdatedProjects", fields: [updatedById], references: [id])
-
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
@@ -406,10 +363,6 @@ model Project {
   quotes          Quote[]
   orders          Order[]
   
-  @@index([companyId])
-  @@index([customerId])
-  @@index([salesRepId])
-  @@index([isDeleted])
   @@map("projects")
 }
 
@@ -462,7 +415,6 @@ model Design {
   items           DesignItem[]
   quoteItems      QuoteItem[]
   
-  @@index([projectId])
   @@map("designs")
 }
 
@@ -526,11 +478,10 @@ model Quote {
   
   // Created by
   createdById     String   @map("created_by_id")
-  createdBy       User     @relation("CreatedQuotes", fields: [createdById], references: [id])
+  createdBy       User     @relation(fields: [createdById], references: [id])
   
   // Status
   status          QuoteStatus @default(DRAFT)
-  isDeleted       Boolean  @default(false)
   
   // Pricing
   subtotal        Decimal  @db.Decimal(12, 2)
@@ -559,9 +510,6 @@ model Quote {
   items           QuoteItem[]
   order           Order?
   
-  @@index([projectId])
-  @@index([createdById])
-  @@index([isDeleted])
   @@map("quotes")
 }
 
@@ -614,12 +562,11 @@ model Order {
   
   // Customer
   customerId      String   @map("customer_id")
-  customer        User     @relation("CustomerOrders", fields: [customerId], references: [id])
+  customer        User     @relation(fields: [customerId], references: [id])
   
   // Status
   status          OrderStatus @default(PENDING)
-  isDeleted       Boolean  @default(false)
-
+  
   // Financial
   totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
   paidAmount      Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
@@ -634,12 +581,6 @@ model Order {
   productionEndDate DateTime? @map("production_end_date")
   shippingDate    DateTime? @map("shipping_date")
   deliveryDate    DateTime? @map("delivery_date")
-
-  // Audit
-  createdById     String   @map("created_by_id")
-  createdBy       User     @relation("CreatedOrders", fields: [createdById], references: [id])
-  updatedById     String?  @map("updated_by_id")
-  updatedBy       User?    @relation("UpdatedOrders", fields: [updatedById], references: [id])
   
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
@@ -649,10 +590,6 @@ model Order {
   payments        Payment[]
   inventoryTransactions InventoryTransaction[]
   
-  @@index([projectId])
-  @@index([quoteId])
-  @@index([customerId])
-  @@index([isDeleted])
   @@map("orders")
 }
 
@@ -686,8 +623,7 @@ model Payment {
   // Timestamps
   paidAt          DateTime? @map("paid_at")
   createdAt       DateTime @default(now()) @map("created_at")
-
-  @@index([orderId])
+  
   @@map("payments")
 }
 
@@ -742,10 +678,6 @@ model InventoryTransaction {
   // Timestamp
   createdAt       DateTime @default(now()) @map("created_at")
   
-  @@index([profileId])
-  @@index([hardwareId])
-  @@index([glassTypeId])
-  @@index([orderId])
   @@map("inventory_transactions")
 }
 
@@ -790,7 +722,6 @@ model Notification {
   // Timestamp
   createdAt       DateTime @default(now()) @map("created_at")
   
-  @@index([userId])
   @@map("notifications")
 }
 
@@ -805,3 +736,5 @@ enum NotificationType {
   LOW_STOCK
   SYSTEM
 }
+
+    
