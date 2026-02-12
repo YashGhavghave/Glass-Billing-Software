@@ -503,7 +503,7 @@ export function CustomDesignToolbar({
             {actions.map(action => {
                  let isDisabled = false;
                  let actionFunc = () => {};
-                 let label = action.label;
+                 let label: string = action.label;
 
                  if (action.id === 'clear') {
                     if (isElementSelected) {

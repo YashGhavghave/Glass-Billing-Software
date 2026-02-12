@@ -168,8 +168,8 @@ const Custom3DView = ({ frames = [], mullions = [], toggleCustomFrameOpenState }
                                     toggleCustomFrameOpenState?.(frame.id);
                                 }
                             }}
-                            onPointerOver={(e) => isOperable && e.nativeEvent.target && (e.nativeEvent.target.style.cursor = 'pointer')}
-                            onPointerOut={(e) => isOperable && e.nativeEvent.target && (e.nativeEvent.target.style.cursor = 'auto')}
+                            onPointerOver={(e) => isOperable && e.nativeEvent.target && ((e.nativeEvent.target as HTMLElement).style.cursor = 'pointer')}
+                            onPointerOut={(e) => isOperable && e.nativeEvent.target && ((e.nativeEvent.target as HTMLElement).style.cursor = 'auto')}
                         >
                             <group position={rotationPivot} rotation={[rotationAxis === 'x' ? rotationAngle : 0, rotationAxis === 'y' ? rotationAngle : 0, 0]}>
                                 <group position={[-rotationPivot[0], -rotationPivot[1], -rotationPivot[2]]}>
