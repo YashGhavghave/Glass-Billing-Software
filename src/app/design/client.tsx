@@ -14,10 +14,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import { useDesignStore } from '@/store/use-design-store';
 import { cn } from '@/lib/utils';
-import { ThreeDVisualization } from '@/components/design/3d-visualization';
 import { Button } from '@/components/ui/button';
+import dynamic from 'next/dynamic';
 
-export default function DesignPage() {
+const ThreeDVisualization = dynamic(() => 
+  import('@/components/design/3d-visualization').then((mod) => mod.ThreeDVisualization),
+  {
+    ssr: false,
+    loading: () => <Skeleton className="w-full h-full" />,
+  }
+);
+
+
+export default function DesignClient() {
   // useDesignEngine hook now primarily manages effects and initialization
   useDesignEngine();
 

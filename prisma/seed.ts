@@ -70,6 +70,7 @@ async function main() {
         unitPrice: 12.50,
         stockQuantity: 500,
         supplierId: supplier1.id,
+        companyId: company.id,
       },
       {
         name: 'Standard PVC Sash 60mm',
@@ -81,6 +82,7 @@ async function main() {
         unitPrice: 10.00,
         stockQuantity: 400,
         supplierId: supplier1.id,
+        companyId: company.id,
       },
       {
         name: 'Mullion Profile 50mm',
@@ -92,6 +94,7 @@ async function main() {
         unitPrice: 8.00,
         stockQuantity: 300,
         supplierId: supplier1.id,
+        companyId: company.id,
       },
     ],
   });
@@ -108,6 +111,7 @@ async function main() {
         unitPrice: 3.50,
         stockQuantity: 1000,
         supplierId: supplier1.id,
+        companyId: company.id,
       },
       {
         name: 'Multi-Point Lock',
@@ -116,6 +120,7 @@ async function main() {
         unitPrice: 25.00,
         stockQuantity: 200,
         supplierId: supplier1.id,
+        companyId: company.id,
       },
       {
         name: 'Handle - Chrome',
@@ -124,6 +129,7 @@ async function main() {
         unitPrice: 15.00,
         stockQuantity: 300,
         supplierId: supplier1.id,
+        companyId: company.id,
       },
     ],
   });
@@ -142,6 +148,7 @@ async function main() {
         pricePerSqm: 45.00,
         stockArea: 100,
         supplierId: supplier2.id,
+        companyId: company.id,
       },
       {
         name: 'Low-E Double Glazed 28mm',
@@ -153,6 +160,7 @@ async function main() {
         pricePerSqm: 65.00,
         stockArea: 50,
         supplierId: supplier2.id,
+        companyId: company.id,
       },
     ],
   });

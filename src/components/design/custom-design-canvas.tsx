@@ -30,8 +30,8 @@ type DragInfo = {
   element: CanvasElement;
   startX: number;
   startY: number;
-  elementStartX: number;
-  elementStartY: number;
+  elementStartX?: number;
+  elementStartY?: number;
   elementEndX?: number;
   elementEndY?: number;
   elementStartWidth?: number;
@@ -1236,9 +1236,50 @@ export function CustomDesignCanvas({ fullscreenContainerRef }: { fullscreenConta
             }
 
             if(element.type === 'frame') {
-                 updateElements({ frames: frames.map(s => 
-                    s.id === element.id ? { ...s, x: newX, y: newY, width: Math.max(10, newWidth), height: Math.max(10, newHeight) } : s
-                )});
+                 const updatedFrame = { ...element, x: newX, y: newY, width: Math.max(10, newWidth), height: Math.max(10, newHeight) };
+                 const originalFrame = frames.find(f => f.id === element.id);
+                 if (!originalFrame) {
+                     updateElements({ frames: frames.map(s => s.id === element.id ? updatedFrame : s) });
+                 } else {
+                     const updatedDimensions = dimensions.map(d => {
+                         if (d.parentId === element.id) {
+                             const isWidthDim = Math.abs(d.y1 - d.y2) < 1;
+                             const isHeightDim = Math.abs(d.x1 - d.x2) < 1;
+
+                             if (isWidthDim) {
+                                 const yOffset = d.y1 - originalFrame.y;
+                                 return {
+                                     ...d,
+                                     x1: updatedFrame.x,
+                                     y1: updatedFrame.y + yOffset,
+                                     x2: updatedFrame.x + updatedFrame.width,
+                                     y2: updatedFrame.y + yOffset,
+                                     text: `${Math.round(updatedFrame.width)}mm`,
+                                     rotationCenterX: updatedFrame.x + updatedFrame.width / 2,
+                                     rotationCenterY: updatedFrame.y + updatedFrame.height / 2,
+                                 };
+                             }
+                             if (isHeightDim) {
+                                 const xOffset = d.x1 - originalFrame.x;
+                                 return {
+                                     ...d,
+                                     x1: updatedFrame.x + xOffset,
+                                     y1: updatedFrame.y,
+                                     x2: updatedFrame.x + xOffset,
+                                     y2: updatedFrame.y + updatedFrame.height,
+                                     text: `${Math.round(updatedFrame.height)}mm`,
+                                     rotationCenterX: updatedFrame.x + updatedFrame.width / 2,
+                                     rotationCenterY: updatedFrame.y + updatedFrame.height / 2,
+                                 };
+                             }
+                         }
+                         return d;
+                     });
+                     updateElements({ 
+                        frames: frames.map(s => s.id === element.id ? updatedFrame : s),
+                        dimensions: updatedDimensions,
+                    });
+                 }
             } else { // textbox
                 updateElements({ textBoxes: textBoxes.map(s => 
                     s.id === element.id ? { ...s, x: newX, y: newY, width: Math.max(10, newWidth), height: Math.max(10, newHeight) } : s
@@ -1948,7 +1989,6 @@ export function CustomDesignCanvas({ fullscreenContainerRef }: { fullscreenConta
                         <g key={box.id} onDoubleClick={(e) => handleTextDoubleClick(e, box)} transform={`rotate(${rotation} ${center.x} ${center.y})`}>
                             <foreignObject x={box.x} y={box.y} width={box.width} height={box.height}>
                                 <div
-                                    xmlns="http://www.w3.org/1999/xhtml"
                                     style={{
                                         width: '100%',
                                         height: '100%',

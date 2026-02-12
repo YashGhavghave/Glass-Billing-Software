@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -53,6 +54,10 @@ export async function registerUser(
     }
 
     const passwordHash = await hash(password, 10);
+    const company = await prisma.company.findFirst();
+    if (!company) {
+        throw new Error("Cannot register user: No default company found.");
+    }
 
     await prisma.user.create({
       data: {
@@ -60,6 +65,7 @@ export async function registerUser(
         passwordHash,
         firstName,
         lastName,
+        companyId: company.id,
         role: UserRole.CUSTOMER,
       },
     });

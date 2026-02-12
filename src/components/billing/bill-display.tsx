@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -24,6 +25,10 @@ interface BillDisplayProps {
 }
 
 export function BillDisplay({ order }: BillDisplayProps) {
+
+  useEffect(() => {
+    document.title = `Invoice - ${order.orderNumber.replace('ORD', 'INV')} - ${order.project.name}`;
+  }, [order]);
   
   const handlePrint = () => {
     window.print();

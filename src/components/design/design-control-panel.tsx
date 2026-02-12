@@ -137,7 +137,7 @@ export function DesignControlPanel({ designs, activeDesign, addDesign, removeDes
                     </div>
                 )}
                 <div className="grid gap-2">
-                    <Label htmlFor="panels">Panels: {parameters.panels}</Label>
+                    <Label>Panels: {parameters.panels}</Label>
                     <Slider
                     id="panels"
                     min={panelMin}

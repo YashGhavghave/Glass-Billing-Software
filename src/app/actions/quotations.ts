@@ -1,3 +1,4 @@
+
 'use server';
 
 import prisma from '@/lib/prisma';
@@ -42,6 +43,7 @@ export async function confirmQuote(quoteId: string) {
         projectId: quote.projectId,
         quoteId: quote.id,
         customerId: quote.project.customerId,
+        createdById: quote.createdById, // Added required field
         status: OrderStatus.CONFIRMED,
         totalAmount: quote.totalAmount,
         paidAmount: 0,
@@ -111,6 +113,9 @@ export async function createProjectAndQuote(
       where: { email: userEmail },
     });
 
+    const adminUser = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' }});
+    if (!adminUser) throw new Error("No admin user found to assign actions to.");
+
     if (!customer) {
       customer = await prisma.user.create({
         data: {
@@ -136,6 +141,7 @@ export async function createProjectAndQuote(
         name: `${name}'s Project`,
         customerId: customer.id,
         companyId: company.id,
+        createdById: adminUser.id,
         status: 'QUOTED',
       },
     });
@@ -174,8 +180,6 @@ export async function createProjectAndQuote(
     });
 
     const quoteNumber = `Q-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const adminUser = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' }});
-    if (!adminUser) throw new Error("No admin user found to assign quote.");
 
     await prisma.quote.create({
       data: {

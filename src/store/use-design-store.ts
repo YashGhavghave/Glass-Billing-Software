@@ -1,9 +1,10 @@
 
 import { createWithEqualityFn } from 'zustand/traditional';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import type { Design, DesignParameters, ProjectOutput, Geometry, Frame, Mullion, Dimension, TextBox } from '@/lib/types';
 import { runDesignEngine } from '@/lib/design-engine';
 import { shallow } from 'zustand/shallow';
+import { indexedDBStorage } from '@/lib/indexeddb-storage';
 
 const createNewDesign = (): Design => {
   const id = `design_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -295,7 +296,7 @@ export const useDesignStore = createWithEqualityFn<DesignState>()(
     }),
     {
       name: 'windoor-design-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: indexedDBStorage,
       partialize: (state) => ({ 
         designs: state.designs, 
         activeDesignId: state.activeDesignId,

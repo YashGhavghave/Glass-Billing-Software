@@ -28,7 +28,7 @@ Create this file: `server/prisma/schema.prisma`
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["native"]
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

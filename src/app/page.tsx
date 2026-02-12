@@ -2,14 +2,36 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, FileText, Package, Receipt, CheckCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { PublicLayout } from '@/components/layout/public-layout';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import prisma from '@/lib/prisma';
+import { Quote, Project, User } from '@prisma/client';
+import { Badge } from '@/components/ui/badge';
 
 const heroImage = PlaceHolderImages.find((img) => img.id === 'hero-image');
 const featureImage = PlaceHolderImages.find((img) => img.id === 'feature-image');
 
-export default function LandingPage() {
+type LatestQuote = (Quote & {
+    project: Project & {
+        customer: User | null;
+    };
+}) | null;
+
+export default async function LandingPage() {
+    const latestQuote: LatestQuote = await prisma.quote.findFirst({
+        orderBy: {
+            createdAt: 'desc',
+        },
+        include: {
+            project: {
+                include: {
+                    customer: true,
+                },
+            },
+        },
+    }).catch(() => null);
+
   return (
     <PublicLayout>
         <section className="relative py-20 sm:py-32">
@@ -46,6 +68,41 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {latestQuote && (
+            <section id="latest-quote" className="py-20 sm:py-32 bg-muted">
+                <div className="container px-4 md:px-6">
+                    <div className="text-center mb-16">
+                        <h2 className="text-3xl font-bold tracking-tight font-headline sm:text-4xl">Latest Quotation</h2>
+                        <p className="mt-4 text-lg text-muted-foreground max-w-3xl mx-auto">Here's the most recent quote generated in the system.</p>
+                    </div>
+                    <Card className="max-w-2xl mx-auto hover:shadow-lg transition-shadow duration-300">
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="font-headline">{latestQuote.project.name}</CardTitle>
+                                 <Badge variant={latestQuote.status === 'APPROVED' || latestQuote.status === 'CONVERTED' ? 'default' : 'secondary'}>{latestQuote.status}</Badge>
+                            </div>
+                            <CardDescription className="pt-1">{latestQuote.quoteNumber}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                             <p className="text-sm text-muted-foreground">
+                                For: {latestQuote.project.customer?.firstName} {latestQuote.project.customer?.lastName}
+                             </p>
+                            <p className="text-2xl font-semibold mt-2">
+                                {Number(latestQuote.totalAmount).toFixed(2)}
+                            </p>
+                        </CardContent>
+                        <CardFooter>
+                            <Button asChild className="w-full">
+                                <Link href={`/projects/${latestQuote.projectId}/quotation`}>
+                                    <FileText className="mr-2 h-4 w-4" /> View Full Quotation
+                                </Link>
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            </section>
+        )}
 
         <section id="features" className="py-20 sm:py-32">
           <div className="container px-4 md:px-6">
@@ -94,7 +151,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="bg-muted py-20 sm:py-32">
+        <section className="py-20 sm:py-32">
             <div className="container px-4 md:px-6">
                 <div className="grid md:grid-cols-2 gap-12 items-center">
                     <div>

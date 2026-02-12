@@ -35,8 +35,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import type { SelectedElement } from "./custom-design-canvas";
-import type { MaterialType, GlassType, OpeningType, Frame, InfillType } from "@/lib/types";
+import type { MaterialType, GlassType, OpeningType, Frame, Mullion, TextBox, InfillType } from "@/lib/types";
 import { Input } from "@/components/ui/input";
 
 
@@ -155,7 +154,7 @@ interface CustomDesignToolbarProps {
   onUpdateInfillType: (infill: InfillType) => void;
   onUpdateGlass: (glass: GlassType) => void;
   onUpdateOpeningType: (opening: OpeningType) => void;
-  selectedElementData: Partial<Frame> | null;
+  selectedElementData: (Frame | Mullion | TextBox) | null;
   onAddShape: (shapeType: string) => void;
   portalContainer?: HTMLElement | null;
 }
@@ -370,7 +369,7 @@ export function CustomDesignToolbar({
                     <TooltipTrigger asChild>
                         <div>
                             <Select
-                                value={selectedElementData?.material}
+                                value={selectedElementData && "material" in selectedElementData ? selectedElementData.material : undefined}
                                 onValueChange={onUpdateMaterial}
                                 disabled={!selectedElementData || !('material' in selectedElementData)}
                             >
@@ -395,7 +394,7 @@ export function CustomDesignToolbar({
                     <TooltipTrigger asChild>
                         <div>
                             <Select
-                                value={selectedElementData?.infill}
+                                value={selectedElementData && "infill" in selectedElementData ? selectedElementData.infill : undefined}
                                 onValueChange={onUpdateInfillType}
                                 disabled={!selectedElementData || !('infill' in selectedElementData)}
                             >
@@ -420,11 +419,11 @@ export function CustomDesignToolbar({
                     <TooltipTrigger asChild>
                         <div>
                             <Select
-                                value={selectedElementData?.glass}
+                                value={selectedElementData && "glass" in selectedElementData ? selectedElementData.glass : undefined}
                                 onValueChange={onUpdateGlass}
-                                disabled={!selectedElementData || !('glass' in selectedElementData) || selectedElementData.infill !== 'glass'}
+                                disabled={!selectedElementData || !('glass' in selectedElementData) || (selectedElementData && 'infill' in selectedElementData && selectedElementData.infill !== 'glass')}
                             >
-                                <SelectTrigger className="h-9 w-36" disabled={!selectedElementData || !('glass' in selectedElementData) || selectedElementData.infill !== 'glass'}>
+                                <SelectTrigger className="h-9 w-36" disabled={!selectedElementData || !('glass' in selectedElementData) || (selectedElementData && 'infill' in selectedElementData && selectedElementData.infill !== 'glass')}>
                                     <div className="flex items-center gap-2">
                                         <GlassWater className="h-4 w-4" />
                                         <SelectValue placeholder="Glass Type" />
@@ -445,7 +444,7 @@ export function CustomDesignToolbar({
                     <TooltipTrigger asChild>
                         <div>
                             <Select
-                                value={selectedElementData?.opening}
+                                value={selectedElementData && "opening" in selectedElementData ? selectedElementData.opening : undefined}
                                 onValueChange={onUpdateOpeningType}
                                 disabled={!selectedElementData || !('opening' in selectedElementData)}
                             >
@@ -505,7 +504,7 @@ export function CustomDesignToolbar({
             {actions.map(action => {
                  let isDisabled = false;
                  let actionFunc = () => {};
-                 let label = action.label;
+                 let label: string = action.label;
 
                  if (action.id === 'clear') {
                     if (isElementSelected) {
