@@ -2,18 +2,21 @@
   "name": "nextn",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -p 9002",
-    "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
-    "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
+    "desktop:dev": "concurrently \"npm:dev\" \"wait-on tcp:9002 && cross-env ELECTRON_RENDERER_URL=http://localhost:9002 electron .\"",
+    "genkit:dev": "genkit start -- node src/ai/dev.js",
+    "genkit:watch": "genkit start --watch -- node src/ai/dev.js",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 9002",
+    "start:desktop:web": "next start -p 9002",
+    "desktop:start": "concurrently \"npm:start:desktop:web\" \"wait-on tcp:9002 && cross-env ELECTRON_RENDERER_URL=http://localhost:9002 electron .\"",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "1.20.0",
@@ -70,15 +73,12 @@
     "zustand": "^4.5.4"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20.14.10",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@types/three": "^0.167.1",
+    "cross-env": "^7.0.3",
+    "concurrently": "^9.2.1",
+    "electron": "^36.5.0",
     "genkit-cli": "1.20.0",
     "postcss": "^8.4.39",
     "prisma": "^5.18.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.5.3"
+    "wait-on": "^8.0.3"
   }
 }
