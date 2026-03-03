@@ -4,6 +4,192 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { QuoteStatus, OrderStatus, UserRole } from '@prisma/client';
+import { createUserWithFallback } from '@/lib/user-service';
+
+function generateId() {
+    return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random()}`;
+}
+
+function isMongoReplicaSetError(error) {
+    return error?.code === 'P2031';
+}
+
+async function ensureManufacturingCompany(prismaClient) {
+    const existingCompany = await prismaClient.company.findFirst();
+    if (existingCompany) {
+        return existingCompany;
+    }
+
+    const defaultCompanyData = {
+        name: 'Default Manufacturing Company',
+        type: 'MANUFACTURER',
+        email: 'factory@windoor.local',
+        phone: '+0000000000',
+        country: 'USA',
+    };
+
+    try {
+        return await prismaClient.company.create({ data: defaultCompanyData });
+    }
+    catch (error) {
+        if (error?.code !== 'P2031') {
+            throw error;
+        }
+
+        const companyId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random()}`;
+        const nowIso = new Date().toISOString();
+        await prismaClient.$runCommandRaw({
+            insert: 'companies',
+            documents: [{
+                _id: companyId,
+                name: defaultCompanyData.name,
+                type: defaultCompanyData.type,
+                email: defaultCompanyData.email,
+                phone: defaultCompanyData.phone,
+                country: defaultCompanyData.country,
+                created_at: { $date: nowIso },
+                updated_at: { $date: nowIso },
+            }],
+        });
+
+        return {
+            id: companyId,
+            ...defaultCompanyData,
+        };
+    }
+}
+
+async function createProjectWithFallback(prismaClient, projectData) {
+    try {
+        return await prismaClient.project.create({ data: projectData });
+    }
+    catch (error) {
+        if (!isMongoReplicaSetError(error)) {
+            throw error;
+        }
+
+        const projectId = generateId();
+        const nowIso = new Date().toISOString();
+
+        await prismaClient.$runCommandRaw({
+            insert: 'projects',
+            documents: [{
+                _id: projectId,
+                project_number: projectData.projectNumber,
+                name: projectData.name,
+                customer_id: projectData.customerId,
+                company_id: projectData.companyId,
+                status: projectData.status || 'DRAFT',
+                priority: 'NORMAL',
+                created_at: { $date: nowIso },
+                updated_at: { $date: nowIso },
+            }],
+        });
+
+        return {
+            id: projectId,
+            ...projectData,
+            priority: 'NORMAL',
+            createdAt: new Date(nowIso),
+            updatedAt: new Date(nowIso),
+        };
+    }
+}
+
+async function createDesignWithFallback(prismaClient, designData) {
+    try {
+        return await prismaClient.design.create({ data: designData });
+    }
+    catch (error) {
+        if (!isMongoReplicaSetError(error)) {
+            throw error;
+        }
+
+        const designId = generateId();
+        const nowIso = new Date().toISOString();
+
+        await prismaClient.$runCommandRaw({
+            insert: 'designs',
+            documents: [{
+                _id: designId,
+                name: designData.name,
+                project_id: designData.projectId,
+                type: designData.type,
+                width: designData.width,
+                height: designData.height,
+                quantity: designData.quantity ?? 1,
+                configuration: designData.configuration,
+                created_at: { $date: nowIso },
+                updated_at: { $date: nowIso },
+            }],
+        });
+
+        return {
+            id: designId,
+            ...designData,
+            quantity: designData.quantity ?? 1,
+            createdAt: new Date(nowIso),
+            updatedAt: new Date(nowIso),
+        };
+    }
+}
+
+async function createQuoteWithItemsFallback(prismaClient, quoteData, quoteItemsData) {
+    try {
+        await prismaClient.quote.create({
+            data: {
+                ...quoteData,
+                items: {
+                    create: quoteItemsData,
+                },
+            },
+        });
+        return;
+    }
+    catch (error) {
+        if (!isMongoReplicaSetError(error)) {
+            throw error;
+        }
+
+        const quoteId = generateId();
+        const nowIso = new Date().toISOString();
+
+        await prismaClient.$runCommandRaw({
+            insert: 'quotes',
+            documents: [{
+                _id: quoteId,
+                quote_number: quoteData.quoteNumber,
+                project_id: quoteData.projectId,
+                created_by_id: quoteData.createdById,
+                status: quoteData.status || 'DRAFT',
+                subtotal: quoteData.subtotal,
+                discount_percent: 0,
+                discount_amount: 0,
+                tax_percent: 0,
+                tax_amount: 0,
+                total_amount: quoteData.totalAmount,
+                valid_until: { $date: quoteData.validUntil.toISOString() },
+                created_at: { $date: nowIso },
+                updated_at: { $date: nowIso },
+            }],
+        });
+
+        if (quoteItemsData.length > 0) {
+            await prismaClient.$runCommandRaw({
+                insert: 'quote_items',
+                documents: quoteItemsData.map((item) => ({
+                    _id: generateId(),
+                    quote_id: quoteId,
+                    design_id: item.designId,
+                    quantity: item.quantity,
+                    unit_price: item.unitPrice,
+                    total_price: item.totalPrice,
+                    created_at: { $date: nowIso },
+                })),
+            });
+        }
+    }
+}
 // Action to confirm a quote and create an order
 export async function confirmQuote(quoteId) {
     try {
@@ -89,45 +275,37 @@ export async function createProjectAndQuote(designs, prevState, formData) {
             where: { email: userEmail },
         });
         if (!customer) {
-            customer = await prisma.user.create({
-                data: {
-                    email: userEmail,
-                    passwordHash: '',
-                    firstName: firstName,
-                    lastName: lastName,
-                    phone: phone,
-                    role: UserRole.CUSTOMER,
-                },
+            customer = await createUserWithFallback(prisma, {
+                email: userEmail,
+                passwordHash: '',
+                firstName: firstName,
+                lastName: lastName,
+                phone: phone,
+                role: UserRole.CUSTOMER,
             });
         }
-        const company = await prisma.company.findFirst();
-        if (!company) {
-            throw new Error("No manufacturing company found in the database.");
-        }
+        const company = await ensureManufacturingCompany(prisma);
         const projectNumber = `PROJ-${Date.now()}`;
-        const project = await prisma.project.create({
-            data: {
-                projectNumber,
-                name: `${name}'s Project`,
-                customerId: customer.id,
-                companyId: company.id,
-                status: 'QUOTED',
-            },
+        const project = await createProjectWithFallback(prisma, {
+            projectNumber,
+            name: `${name}'s Project`,
+            customerId: customer.id,
+            companyId: company.id,
+            status: 'QUOTED',
         });
+        const dbDesigns = [];
         for (const design of designs) {
-            await prisma.design.create({
-                data: {
-                    name: design.name,
-                    projectId: project.id,
-                    type: 'CUSTOM',
-                    width: design.parameters.width,
-                    height: design.parameters.height,
-                    quantity: 1,
-                    configuration: design.parameters,
-                },
+            const createdDesign = await createDesignWithFallback(prisma, {
+                name: design.name,
+                projectId: project.id,
+                type: 'CUSTOM',
+                width: design.parameters.width,
+                height: design.parameters.height,
+                quantity: 1,
+                configuration: design.parameters,
             });
+            dbDesigns.push(createdDesign);
         }
-        const dbDesigns = await prisma.design.findMany({ where: { projectId: project.id } });
         const calculateArea = (width, height) => ((width / 25.4) * (height / 25.4)) / 144;
         let subtotal = 0;
         const quoteItemsData = dbDesigns.map((dbDesign, index) => {
@@ -145,22 +323,20 @@ export async function createProjectAndQuote(designs, prevState, formData) {
         });
         const quoteNumber = `Q-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
         const adminUser = await prisma.user.findFirst({ where: { role: 'SUPER_ADMIN' } });
-        if (!adminUser)
-            throw new Error("No admin user found to assign quote.");
-        await prisma.quote.create({
-            data: {
+        const quoteCreatorId = adminUser?.id || customer.id;
+        await createQuoteWithItemsFallback(
+            prisma,
+            {
                 quoteNumber,
                 projectId: project.id,
-                createdById: adminUser.id,
+                createdById: quoteCreatorId,
                 status: QuoteStatus.DRAFT,
                 subtotal: subtotal,
                 totalAmount: subtotal,
                 validUntil: new Date(new Date().setDate(new Date().getDate() + 30)),
-                items: {
-                    create: quoteItemsData,
-                },
             },
-        });
+            quoteItemsData
+        );
     }
     catch (error) {
         console.error("Failed to create project and quote:", error);

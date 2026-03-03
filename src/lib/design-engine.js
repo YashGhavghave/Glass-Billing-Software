@@ -12,6 +12,7 @@ const SASH_SIZE = {
 // This is a simplified engine. A real app would have much more complex calculations.
 export const runDesignEngine = async (params) => {
     const warnings = [];
+    const productType = params.productType || 'window';
     const isHinged = params.system === 'casement' || params.system === 'awning' || params.system === 'tilt-and-turn';
     if (params.height > 3200) {
         warnings.push("Height over 3200mm may require special engineering review.");
@@ -72,6 +73,7 @@ export const runDesignEngine = async (params) => {
     let totalSealingLength = 0;
     const cutList = [];
     const bom = [];
+    const panelOutlines = [];
     // Main Frame
     cutList.push({ part: 'Outer Frame (Top/Bottom)', length: params.width, angle: '45° Mitre', quantity: 2, profile: params.profile, material: params.material });
     cutList.push({ part: 'Outer Frame (Left/Right)', length: params.height, angle: '45° Mitre', quantity: 2, profile: params.profile, material: params.material });
@@ -91,6 +93,18 @@ export const runDesignEngine = async (params) => {
             height: panelRect.height - 2 * sashHorizontal,
         };
         panels.push({ panelRect, glassRect });
+        panelOutlines.push({
+            panel: 'Panel 1',
+            system: params.system,
+            sashWidth: Math.round(panelRect.width),
+            sashHeight: Math.round(panelRect.height),
+            glassWidth: Math.max(0, Math.round(glassRect.width)),
+            glassHeight: Math.max(0, Math.round(glassRect.height)),
+            glassArea: parseFloat(Math.max(0, (glassRect.width * glassRect.height) / 1000000).toFixed(3)),
+            profile: params.profile,
+            material: params.material,
+            glass: params.glass,
+        });
         if (glassRect.width > 0 && glassRect.height > 0) {
             totalGlassArea += (glassRect.width * glassRect.height) / 1000000; // to m²
         }
@@ -116,6 +130,18 @@ export const runDesignEngine = async (params) => {
                 height: panelRect.height - 2 * sashHorizontal,
             };
             panels.push({ panelRect, glassRect });
+            panelOutlines.push({
+                panel: `Panel ${i + 1}`,
+                system: params.system,
+                sashWidth: Math.round(panelRect.width),
+                sashHeight: Math.round(panelRect.height),
+                glassWidth: Math.max(0, Math.round(glassRect.width)),
+                glassHeight: Math.max(0, Math.round(glassRect.height)),
+                glassArea: parseFloat(Math.max(0, (glassRect.width * glassRect.height) / 1000000).toFixed(3)),
+                profile: params.profile,
+                material: params.material,
+                glass: params.glass,
+            });
             cutList.push({ part: `Panel ${i + 1} Sash (Top/Bottom)`, length: panelWidth, angle: '45° Mitre', quantity: 2, profile: params.profile, material: params.material });
             cutList.push({ part: `Panel ${i + 1} Sash (Left/Right)`, length: panelHeight, angle: '45° Mitre', quantity: 2, profile: params.profile, material: params.material });
             totalFrameLength += 2 * panelWidth + 2 * panelHeight;
@@ -142,6 +168,18 @@ export const runDesignEngine = async (params) => {
                 height: panelRect.height - 2 * sashHorizontal,
             };
             panels.push({ panelRect, glassRect });
+            panelOutlines.push({
+                panel: `Panel ${i + 1}`,
+                system: params.system,
+                sashWidth: Math.round(panelRect.width),
+                sashHeight: Math.round(panelRect.height),
+                glassWidth: Math.max(0, Math.round(glassRect.width)),
+                glassHeight: Math.max(0, Math.round(glassRect.height)),
+                glassArea: parseFloat(Math.max(0, (glassRect.width * glassRect.height) / 1000000).toFixed(3)),
+                profile: params.profile,
+                material: params.material,
+                glass: params.glass,
+            });
             cutList.push({ part: `Panel ${i + 1} Sash (Top/Bottom)`, length: panelWidth, angle: '45° Mitre', quantity: 2, profile: params.profile, material: params.material });
             cutList.push({ part: `Panel ${i + 1} Sash (Left/Right)`, length: panelHeight, angle: '45° Mitre', quantity: 2, profile: params.profile, material: params.material });
             totalFrameLength += 2 * panelWidth + 2 * panelHeight;
@@ -153,8 +191,10 @@ export const runDesignEngine = async (params) => {
     }
     // --- Output Generation ---
     const materialName = params.material.charAt(0).toUpperCase() + params.material.slice(1);
-    bom.push({ item: 'Frame Profile', description: `${materialName} Profile (${params.profile})`, quantity: parseFloat((totalFrameLength / 1000).toFixed(2)), unit: 'm' });
-    bom.push({ item: 'Glass Panel', description: `${params.glass}`, quantity: parseFloat(totalGlassArea.toFixed(2)), unit: 'm²' });
+    const profileItemName = productType === 'door' ? 'Door Frame Profile' : 'Frame Profile';
+    const glassItemName = productType === 'door' ? 'Door Glass/Infill Panel' : 'Glass Panel';
+    bom.push({ item: profileItemName, description: `${materialName} Profile (${params.profile})`, quantity: parseFloat((totalFrameLength / 1000).toFixed(2)), unit: 'm' });
+    bom.push({ item: glassItemName, description: `${params.glass}`, quantity: parseFloat(totalGlassArea.toFixed(2)), unit: 'm²' });
     if (!isFixed) {
         let hardwareDescription = `${params.hardware} style`;
         if (isFoldable) {
@@ -166,10 +206,21 @@ export const runDesignEngine = async (params) => {
         else if (isHinged) {
             hardwareDescription = `${params.system === 'tilt-and-turn' ? 'Tilt & Turn' : 'Hinge'} Kit (${params.hardware})`;
         }
-        bom.push({ item: 'Hardware Kit', description: hardwareDescription, quantity: params.panels, unit: 'sets' });
+        bom.push({ item: productType === 'door' ? 'Door Hardware Kit' : 'Hardware Kit', description: hardwareDescription, quantity: params.panels, unit: 'sets' });
     }
     bom.push({ item: 'Weather Stripping', description: 'EPDM Seal', quantity: parseFloat((totalSealingLength / 1000).toFixed(2)), unit: 'm' });
+    const materialSummary = {
+        productType,
+        system: params.system,
+        profile: params.profile,
+        material: params.material,
+        glass: params.glass,
+        panelCount: panels.length,
+        frameLengthM: parseFloat((totalFrameLength / 1000).toFixed(2)),
+        glassAreaM2: parseFloat(totalGlassArea.toFixed(2)),
+        weatherSealM: parseFloat((totalSealingLength / 1000).toFixed(2)),
+    };
     const geometry = { frame, tracks, panels };
-    const outputs = { bom, cutList };
+    const outputs = { bom, cutList, panelOutlines, materialSummary };
     return { geometry, warnings, outputs };
 };

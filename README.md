@@ -136,7 +136,7 @@ This is your complete guide to building a professional window and door manufactu
 - Node.js 18+ with Express
 - TypeScript
 - Prisma ORM
-- PostgreSQL 15+
+- MongoDB
 - JWT for authentication
 - Bcrypt for password hashing
 

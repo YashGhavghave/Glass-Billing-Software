@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -17,7 +17,7 @@ datasource db {
 // ============================================
 
 model User {
-  id            String    @id @default(uuid())
+  id            String    @id @map("_id") @default(uuid())
   email         String    @unique
   passwordHash  String    @map("password_hash")
   firstName     String?   @map("first_name")
@@ -67,7 +67,7 @@ enum UserStatus {
 }
 
 model Company {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   name            String
   type            CompanyType
   email           String?
@@ -87,8 +87,8 @@ model Company {
   license         String?
   
   // Settings
-  markupPercent   Decimal? @map("markup_percent") @db.Decimal(5, 2)
-  discountLimit   Decimal? @map("discount_limit") @db.Decimal(5, 2)
+  markupPercent   Float? @map("markup_percent")
+  discountLimit   Float? @map("discount_limit")
   
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
@@ -114,7 +114,7 @@ enum CompanyType {
 // ============================================
 
 model Profile {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   name            String
   sku             String   @unique
   category        ProfileCategory
@@ -126,7 +126,7 @@ model Profile {
   thickness       Int?
   
   // Pricing
-  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
+  unitPrice       Float  @map("unit_price")
   unit            String   @default("meter") // meter, piece, foot
   
   // Inventory
@@ -134,7 +134,7 @@ model Profile {
   minStock        Int      @default(10) @map("min_stock")
   
   // Details
-  description     String?  @db.Text
+  description     String?
   specifications  Json?
   color           String?
   finish          String?
@@ -176,20 +176,20 @@ enum MaterialType {
 }
 
 model Hardware {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   name            String
   sku             String   @unique
   type            HardwareType
   
   // Details
-  description     String?  @db.Text
+  description     String?
   specifications  Json?
   material        String?
   finish          String?
   size            String?
   
   // Pricing
-  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
+  unitPrice       Float  @map("unit_price")
   
   // Inventory
   stockQuantity   Int      @default(0) @map("stock_quantity")
@@ -227,16 +227,16 @@ enum HardwareType {
 }
 
 model GlassType {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   name            String
   sku             String   @unique
   type            GlassCategory
   
   // Specifications
   thickness       Int      // in mm
-  uValue          Decimal? @map("u_value") @db.Decimal(4, 2)
-  shgc            Decimal? @db.Decimal(3, 2) // Solar Heat Gain Coefficient
-  visibleTransmittance Decimal? @map("visible_transmittance") @db.Decimal(3, 2)
+  uValue          Float? @map("u_value")
+  shgc            Float? // Solar Heat Gain Coefficient
+  visibleTransmittance Float? @map("visible_transmittance")
   
   // Features
   isTempered      Boolean  @default(false) @map("is_tempered")
@@ -246,11 +246,11 @@ model GlassType {
   tintColor       String?  @map("tint_color")
   
   // Pricing (per square meter)
-  pricePerSqm     Decimal  @map("price_per_sqm") @db.Decimal(10, 2)
+  pricePerSqm     Float  @map("price_per_sqm")
   
   // Inventory
-  stockArea       Decimal  @default(0) @map("stock_area") @db.Decimal(10, 2) // in m²
-  minStock        Decimal  @default(10) @map("min_stock") @db.Decimal(10, 2)
+  stockArea       Float  @default(0) @map("stock_area") // in m²
+  minStock        Float  @default(10) @map("min_stock")
   
   // Supplier
   supplierId      String?  @map("supplier_id")
@@ -279,7 +279,7 @@ enum GlassCategory {
 // ============================================
 
 model Supplier {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   name            String
   email           String?
   phone           String?
@@ -318,10 +318,10 @@ model Supplier {
 // ============================================
 
 model Project {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   projectNumber   String   @unique @map("project_number")
   name            String
-  description     String?  @db.Text
+  description     String?
   
   // Customer
   customerId      String   @map("customer_id")
@@ -346,8 +346,8 @@ model Project {
   zipCode         String?  @map("zip_code")
   
   // Financial
-  estimatedValue  Decimal? @map("estimated_value") @db.Decimal(12, 2)
-  actualValue     Decimal? @map("actual_value") @db.Decimal(12, 2)
+  estimatedValue  Float? @map("estimated_value")
+  actualValue     Float? @map("actual_value")
   
   // Dates
   startDate       DateTime? @map("start_date")
@@ -383,7 +383,7 @@ enum Priority {
 }
 
 model Design {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   name            String
   
   // Project
@@ -433,7 +433,7 @@ enum WindowType {
 }
 
 model DesignItem {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   
   // Design
   designId        String   @map("design_id")
@@ -453,7 +453,7 @@ model DesignItem {
   glassType       GlassType? @relation(fields: [glassTypeId], references: [id])
   
   // Quantity
-  quantity        Decimal  @db.Decimal(10, 2)
+  quantity        Float
   unit            String   // meter, piece, sqm
   
   // Timestamps
@@ -469,7 +469,7 @@ enum DesignItemType {
 }
 
 model Quote {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   quoteNumber     String   @unique @map("quote_number")
   
   // Project
@@ -484,18 +484,18 @@ model Quote {
   status          QuoteStatus @default(DRAFT)
   
   // Pricing
-  subtotal        Decimal  @db.Decimal(12, 2)
-  discountPercent Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
-  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(12, 2)
-  taxPercent      Decimal  @default(0) @map("tax_percent") @db.Decimal(5, 2)
-  taxAmount       Decimal  @default(0) @map("tax_amount") @db.Decimal(12, 2)
-  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
+  subtotal        Float
+  discountPercent Float  @default(0) @map("discount_percent")
+  discountAmount  Float  @default(0) @map("discount_amount")
+  taxPercent      Float  @default(0) @map("tax_percent")
+  taxAmount       Float  @default(0) @map("tax_amount")
+  totalAmount     Float  @map("total_amount")
   
   // Terms
   validUntil      DateTime @map("valid_until")
   paymentTerms    String?  @map("payment_terms")
-  notes           String?  @db.Text
-  termsConditions String?  @map("terms_conditions") @db.Text
+  notes           String?
+  termsConditions String?  @map("terms_conditions")
   
   // Dates
   sentAt          DateTime? @map("sent_at")
@@ -524,7 +524,7 @@ enum QuoteStatus {
 }
 
 model QuoteItem {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   
   // Quote
   quoteId         String   @map("quote_id")
@@ -536,8 +536,8 @@ model QuoteItem {
   
   // Pricing
   quantity        Int
-  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)
-  totalPrice      Decimal  @map("total_price") @db.Decimal(12, 2)
+  unitPrice       Float  @map("unit_price")
+  totalPrice      Float  @map("total_price")
   
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
@@ -550,7 +550,7 @@ model QuoteItem {
 // ============================================
 
 model Order {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   orderNumber     String   @unique @map("order_number")
   
   // Project & Quote
@@ -568,11 +568,11 @@ model Order {
   status          OrderStatus @default(PENDING)
   
   // Financial
-  totalAmount     Decimal  @map("total_amount") @db.Decimal(12, 2)
-  paidAmount      Decimal  @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  totalAmount     Float  @map("total_amount")
+  paidAmount      Float  @default(0) @map("paid_amount")
   
   // Production
-  productionNotes String?  @map("production_notes") @db.Text
+  productionNotes String?  @map("production_notes")
   cncFiles        Json?    @map("cnc_files")
   
   // Dates
@@ -605,14 +605,14 @@ enum OrderStatus {
 }
 
 model Payment {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   
   // Order
   orderId         String   @map("order_id")
   order           Order    @relation(fields: [orderId], references: [id])
   
   // Payment Details
-  amount          Decimal  @db.Decimal(12, 2)
+  amount          Float
   method          PaymentMethod
   status          PaymentStatus @default(PENDING)
   
@@ -649,7 +649,7 @@ enum PaymentStatus {
 // ============================================
 
 model InventoryTransaction {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   
   // Item Type & Reference
   itemType        InventoryItemType @map("item_type")
@@ -665,7 +665,7 @@ model InventoryTransaction {
   
   // Transaction Details
   type            TransactionType
-  quantity        Decimal  @db.Decimal(10, 2)
+  quantity        Float
   unit            String
   
   // Reference
@@ -673,7 +673,7 @@ model InventoryTransaction {
   order           Order?   @relation(fields: [orderId], references: [id])
   
   // Notes
-  notes           String?  @db.Text
+  notes           String?
   
   // Timestamp
   createdAt       DateTime @default(now()) @map("created_at")
@@ -700,7 +700,7 @@ enum TransactionType {
 // ============================================
 
 model Notification {
-  id              String   @id @default(uuid())
+  id              String   @id @map("_id") @default(uuid())
   
   // User
   userId          String   @map("user_id")
@@ -709,7 +709,7 @@ model Notification {
   // Notification Details
   type            NotificationType
   title           String
-  message         String   @db.Text
+  message         String
   
   // Reference
   referenceType   String?  @map("reference_type")

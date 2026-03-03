@@ -415,7 +415,7 @@ mkdir testing
 4. **Add the following content**:
    ```env
    # Database
-   DATABASE_URL="postgresql://windoor_user:your_secure_password@localhost:5432/windoor_db"
+   DATABASE_URL="mongodb://localhost:27017/windoor_db"
    
    # JWT Secret (generate a random string)
    JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"

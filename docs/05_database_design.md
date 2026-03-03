@@ -5,14 +5,14 @@ This document contains the complete database design for the Windoor application,
 
 ---
 
-## 🗄️ Database Selection: PostgreSQL
+## 🗄️ Database Selection: MongoDB
 
-### Why PostgreSQL?
-- **ACID Compliance**: Ensures data integrity
-- **JSON Support**: Store complex design data
+### Why MongoDB?
+- **Schema Flexibility**: Works well with evolving JSON-heavy design data
+- **Document Model**: Natural fit for nested configuration payloads
 - **Scalability**: Handles growth well
 - **Open Source**: Free to use
-- **Rich Features**: Full-text search, arrays, etc.
+- **Developer Velocity**: Fast iteration during product changes
 
 ---
 
@@ -32,7 +32,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -817,17 +817,17 @@ Copy the schema above into `server/prisma/schema.prisma`
 
 In `server/.env`:
 ```env
-DATABASE_URL="postgresql://windoor_user:your_password@localhost:5432/windoor_db"
+DATABASE_URL="mongodb://localhost:27017/windoor_db"
 ```
 
-### Generate Migration
+### Push Schema to MongoDB
 
 ```bash
-npx prisma migrate dev --name init
+npx prisma db push
 ```
 
 This will:
-1. Create all tables
+1. Create collections and indexes
 2. Set up relationships
 3. Generate Prisma Client
 

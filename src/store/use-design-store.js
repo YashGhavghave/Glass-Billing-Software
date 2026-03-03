@@ -6,6 +6,7 @@ import { indexedDBStorage } from '@/lib/indexeddb-storage';
 const createNewDesign = () => {
     const id = `design_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const defaultParams = {
+        productType: 'window',
         system: '3-track',
         profile: 'standard',
         material: 'aluminum',

@@ -321,11 +321,102 @@ export function CustomDesignCanvas({ fullscreenContainerRef }) {
             });
         });
     };
+    const toggleFrameOpenState = (frameId) => {
+        updateAndRecord(() => {
+            updateElements({
+                frames: frames.map(frame => {
+                    if (frame.id !== frameId)
+                        return frame;
+                    if (!frame.opening || frame.opening === 'fixed')
+                        return frame;
+                    const current = frame.openState ?? 0;
+                    return { ...frame, openState: (current + 1) % 3 };
+                }),
+            });
+        });
+    };
     const handleAddShape = (shapeType) => {
         const centerX = -panOffset.x / zoom + (canvasRef.current?.clientWidth ?? 0) / (2 * zoom);
         const centerY = -panOffset.y / zoom + (canvasRef.current?.clientHeight ?? 0) / (2 * zoom);
         const size = 300;
         const groupId = `group_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const allowedShapeTypes = new Set([
+            'base-window-2-slider',
+            'base-window-3-slider',
+            'base-door-single',
+            'base-door-double',
+            'rectangle',
+        ]);
+        if (!allowedShapeTypes.has(shapeType)) {
+            return;
+        }
+
+        const addBaseFrame = ({ width, height, opening = 'fixed', splitCount = 1 }) => {
+            const frameId = `frame_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            const frameX = centerX - width / 2;
+            const frameY = centerY - height / 2;
+            const frame = {
+                id: frameId,
+                type: 'frame',
+                x: frameX,
+                y: frameY,
+                width,
+                height,
+                material: DEFAULT_MATERIAL,
+                infill: DEFAULT_INFILL,
+                glass: DEFAULT_GLASS,
+                color: DEFAULT_STROKE_COLOR,
+                opening,
+                openState: 0,
+            };
+
+            const baseMullions = [];
+            if (splitCount > 1) {
+                for (let i = 1; i < splitCount; i++) {
+                    const x = frameX + (width * i) / splitCount;
+                    baseMullions.push({
+                        id: `mullion_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${i}`,
+                        type: 'mullion',
+                        x1: x,
+                        y1: frameY,
+                        x2: x,
+                        y2: frameY + height,
+                        material: DEFAULT_MATERIAL,
+                        color: DEFAULT_STROKE_COLOR,
+                        parentId: frameId,
+                    });
+                }
+            }
+
+            updateAndRecord(() => {
+                updateElements({
+                    frames: [...frames, frame],
+                    mullions: [...mullions, ...baseMullions],
+                });
+                setSelectedElement({ type: 'frame', id: frameId });
+            });
+        };
+
+        if (shapeType === 'base-window-2-slider') {
+            addBaseFrame({ width: 1800, height: 1500, opening: '2-slider', splitCount: 2 });
+            return;
+        }
+
+        if (shapeType === 'base-window-3-slider') {
+            addBaseFrame({ width: 2400, height: 1500, opening: '3-slider', splitCount: 3 });
+            return;
+        }
+
+        if (shapeType === 'base-door-single') {
+            addBaseFrame({ width: 1000, height: 2200, opening: 'door-left', splitCount: 1 });
+            return;
+        }
+
+        if (shapeType === 'base-door-double') {
+            addBaseFrame({ width: 1800, height: 2200, opening: 'door-left', splitCount: 2 });
+            return;
+        }
+
         if (shapeType === 'rectangle') {
             const newFrame = {
                 id: `frame_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
@@ -1490,6 +1581,9 @@ export function CustomDesignCanvas({ fullscreenContainerRef }) {
                 <marker id="dim-arrow" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                     <path d="M 0 0 L 10 5 L 0 10" fill="none" stroke="currentColor" strokeWidth={1.5 / zoom}/>
                 </marker>
+                <marker id="door-open-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth={8 / zoom} markerHeight={8 / zoom} orient="auto">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill={SELECTED_ELEMENT_COLOR}/>
+                </marker>
                 <pattern id="brick-pattern" width={80 / zoom} height={40 / zoom} patternUnits="userSpaceOnUse">
                     <rect width={80 / zoom} height={40 / zoom} fill="hsl(var(--muted))"/>
                     <path d={`M 0 ${10 / zoom} H ${80 / zoom} M 0 ${30 / zoom} H ${80 / zoom} M ${40 / zoom} 0 V ${10 / zoom} M 0 ${10 / zoom} V ${20 / zoom} M ${40 / zoom} ${20 / zoom} V ${30 / zoom} M 0 ${30 / zoom} V ${40 / zoom}`} stroke="hsl(var(--border))" strokeWidth={1 / zoom}/>
@@ -1535,7 +1629,24 @@ export function CustomDesignCanvas({ fullscreenContainerRef }) {
             const glassHeight = Math.max(0, shape.height - 2 * thickness);
             const center = getElementCenter(shape);
             const infill = shape.infill || 'glass';
-            return (<g key={shape.id} transform={`rotate(${shape.rotation || 0} ${center.x} ${center.y})`}>
+            const openState = shape.openState || 0;
+            const openRatio = openState === 0 ? 0 : openState === 1 ? 0.5 : 1;
+            const isSliderLike = shape.opening === '2-slider' || shape.opening === '3-slider';
+            const isDoorSwing = shape.opening === 'door-left' || shape.opening === 'door-right';
+            const sliderPanelCount = shape.opening === '3-slider' ? 3 : shape.opening === '2-slider' ? 2 : 1;
+            const sliderOverlap = 50;
+            const sliderTravel = shape.opening === '3-slider' ? glassWidth * 0.66 : glassWidth * 0.5;
+            const sliderOffset = isSliderLike ? sliderTravel * openRatio : 0;
+            const doorSwingAngleDeg = 55 * openRatio;
+            const doorSwingAngleRad = doorSwingAngleDeg * (Math.PI / 180);
+            const doorScaleX = Math.max(0.2, Math.cos(doorSwingAngleRad));
+            const doorScaleY = 1 - Math.sin(doorSwingAngleRad) * 0.08;
+            const doorHingeX = shape.opening === 'door-left' ? glassX : glassX + glassWidth;
+            const doorHingeY = glassY + glassHeight / 2;
+            const doorInfillTransform = isDoorSwing
+                ? `translate(${doorHingeX}, ${doorHingeY}) scale(${doorScaleX}, ${doorScaleY}) translate(${-doorHingeX}, ${-doorHingeY})`
+                : '';
+            return (<g key={shape.id} transform={`rotate(${shape.rotation || 0} ${center.x} ${center.y})`} onDoubleClick={() => toggleFrameOpenState(shape.id)}>
                             <rect x={shape.x} y={shape.y} width={shape.width} height={shape.height} fill={fill} strokeLinecap="round"/>
                             {glassWidth > 0 && glassHeight > 0 && (<>
                                     <defs>
@@ -1543,20 +1654,63 @@ export function CustomDesignCanvas({ fullscreenContainerRef }) {
                                             <rect x={glassX} y={glassY} width={glassWidth} height={glassHeight}/>
                                         </clipPath>
                                     </defs>
-                                    {infill === 'glass' && (<>
-                                        <rect x={glassX} y={glassY} width={glassWidth} height={glassHeight} fill={shape.glassColor || "hsla(var(--secondary), 0.5)"} stroke="hsl(var(--foreground))" strokeWidth={1 / zoom} strokeOpacity={0.2}/>
-                                        <text x={glassX + glassWidth / 2} y={glassY + glassHeight / 2} textAnchor="middle" dominantBaseline="middle" fill="hsl(var(--foreground))" opacity="0.2" fontSize={40 / zoom} fontWeight="bold" className="pointer-events-none uppercase tracking-wider">
-                                            {shape.glass?.replace('-', ' ')}
-                                        </text>
-                                        </>)}
-                                    {infill === 'panel' && (<rect x={glassX} y={glassY} width={glassWidth} height={glassHeight} fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth={1.5 / zoom}/>)}
-                                    {infill === 'louver' && (<g clipPath={`url(#clip-${shape.id})`}>
+                                    {infill === 'glass' && (<g transform={doorInfillTransform}>
+                                        {isSliderLike ? (<>
+                                                {Array.from({ length: sliderPanelCount - 1 }).map((_, i) => {
+                    const lineX = glassX + ((i + 1) * glassWidth) / sliderPanelCount;
+                    return (<line key={`track-${shape.id}-${i}`} x1={lineX} y1={glassY} x2={lineX} y2={glassY + glassHeight} stroke="hsl(var(--border))" strokeWidth={1 / zoom} strokeDasharray={`${4 / zoom} ${2 / zoom}`}/>);
+                })}
+                                                {Array.from({ length: sliderPanelCount }).map((_, i) => {
+                    const availableWidth = glassWidth + (sliderPanelCount - 1) * sliderOverlap;
+                    const panelWidth = availableWidth / sliderPanelCount;
+                    const panelX = glassX + i * (panelWidth - sliderOverlap);
+                    const panelY = glassY;
+                    const glassInset = Math.max(8, thickness * 0.35);
+                    const panelGlassWidth = Math.max(0, panelWidth - 2 * glassInset);
+                    const panelGlassHeight = Math.max(0, glassHeight - 2 * glassInset);
+                    const panelShift = i % 2 === 0 ? sliderOffset * 0.5 : -sliderOffset * 0.25;
+                    return (<g key={`panel-${shape.id}-${i}`} transform={`translate(${panelShift}, 0)`}>
+                                                            <rect x={panelX} y={panelY} width={panelWidth} height={glassHeight} fill={fill} stroke="hsl(var(--foreground))" strokeWidth={1 / zoom}/>
+                                                            <rect x={panelX + glassInset} y={panelY + glassInset} width={panelGlassWidth} height={panelGlassHeight} fill={shape.glassColor || "hsla(var(--secondary), 0.5)"} stroke="hsl(var(--foreground))" strokeWidth={1 / zoom} strokeOpacity={0.2}/>
+                                                        </g>);
+                })}
+                                                <text x={glassX + glassWidth / 2} y={glassY + glassHeight / 2} textAnchor="middle" dominantBaseline="middle" fill="hsl(var(--foreground))" opacity="0.2" fontSize={32 / zoom} fontWeight="bold" className="pointer-events-none uppercase tracking-wider">
+                                                    {shape.glass?.replace('-', ' ')}
+                                                </text>
+                                            </>) : (<g transform={`translate(${sliderOffset}, 0)`}>
+                                                <rect x={glassX} y={glassY} width={glassWidth} height={glassHeight} fill={shape.glassColor || "hsla(var(--secondary), 0.5)"} stroke="hsl(var(--foreground))" strokeWidth={1 / zoom} strokeOpacity={0.2}/>
+                                                <text x={glassX + glassWidth / 2} y={glassY + glassHeight / 2} textAnchor="middle" dominantBaseline="middle" fill="hsl(var(--foreground))" opacity="0.2" fontSize={40 / zoom} fontWeight="bold" className="pointer-events-none uppercase tracking-wider">
+                                                    {shape.glass?.replace('-', ' ')}
+                                                </text>
+                                            </g>)}
+                                        </g>)}
+                                    {infill === 'panel' && (<g transform={doorInfillTransform}><rect x={glassX} y={glassY} width={glassWidth} height={glassHeight} fill="hsl(var(--muted))" stroke="hsl(var(--border))" strokeWidth={1.5 / zoom}/></g>)}
+                                    {infill === 'louver' && (<g transform={doorInfillTransform} clipPath={`url(#clip-${shape.id})`}>
                                             <rect x={glassX} y={glassY} width={glassWidth} height={glassHeight} fill="hsl(var(--muted))"/>
                                             {Array.from({ length: Math.floor(glassHeight / (20)) }).map((_, i) => (<line key={i} x1={glassX} y1={glassY + (i + 0.5) * 20} x2={glassX + glassWidth} y2={glassY + (i + 0.5) * 20} stroke="hsl(var(--border))" strokeWidth={2 / zoom}/>))}
                                         </g>)}
-                                    {infill === 'brickwork' && (<rect x={glassX} y={glassY} width={glassWidth} height={glassHeight} fill="url(#brick-pattern)"/>)}
+                                    {infill === 'brickwork' && (<g transform={doorInfillTransform}><rect x={glassX} y={glassY} width={glassWidth} height={glassHeight} fill="url(#brick-pattern)"/></g>)}
                                 </>)}
                             {isSelected && (<rect x={shape.x} y={shape.y} width={shape.width} height={shape.height} fill="none" stroke={SELECTED_ELEMENT_COLOR} strokeWidth={SELECTION_OUTLINE_WIDTH / zoom} className="pointer-events-none"/>)}
+                            {isSelected && isDoorSwing && (<>
+                                    {(() => {
+                    const hingeX = shape.opening === 'door-left' ? shape.x : shape.x + shape.width;
+                    const hingeY1 = shape.y + shape.height * 0.25;
+                    const hingeY2 = shape.y + shape.height * 0.75;
+                    return (<>
+                                                <circle cx={hingeX} cy={hingeY1} r={7 / zoom} fill="hsl(var(--card))" stroke={SELECTED_ELEMENT_COLOR} strokeWidth={2 / zoom}/>
+                                                <circle cx={hingeX} cy={hingeY2} r={7 / zoom} fill="hsl(var(--card))" stroke={SELECTED_ELEMENT_COLOR} strokeWidth={2 / zoom}/>
+                                            </>);
+                })()}
+                                    {(() => {
+                    const arrowYOffset = 22 / zoom;
+                    const arrowXOffset = 26 / zoom;
+                    const startX = shape.opening === 'door-left' ? shape.x + arrowXOffset : shape.x + shape.width - arrowXOffset;
+                    const endX = shape.opening === 'door-left' ? shape.x + shape.width - arrowXOffset : shape.x + arrowXOffset;
+                    const y = shape.y + shape.height + arrowYOffset;
+                    return (<path d={`M ${startX} ${y} Q ${(startX + endX) / 2} ${y + (shape.opening === 'door-left' ? 24 / zoom : -24 / zoom)} ${endX} ${y}`} fill="none" stroke={SELECTED_ELEMENT_COLOR} strokeWidth={2 / zoom} markerEnd="url(#door-open-arrow)"/>);
+                })()}
+                                </>)}
                             {isSelected && Object.entries(getHandlesForRect(shape)).map(([key, handle]) => {
                     const handleSize = HANDLE_SIZE / zoom;
                     const isRotationHandle = key === 'rotate';

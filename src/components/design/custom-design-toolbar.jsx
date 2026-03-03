@@ -64,6 +64,8 @@ const glassTypes = [
 ];
 const openingTypes = [
     { value: 'fixed', label: 'Fixed' },
+    { value: '2-slider', label: '2 Slider' },
+    { value: '3-slider', label: '3 Slider' },
     { value: 'casement-left', label: 'Casement (L)' },
     { value: 'casement-right', label: 'Casement (R)' },
     { value: 'door-left', label: 'Door (L)' },
@@ -101,18 +103,17 @@ export function CustomDesignToolbar({ activeTool, setActiveTool, onClear, onDele
                         </PopoverTrigger>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
-                        <p>Add Shape</p>
+                        <p>Add Base Structure</p>
                     </TooltipContent>
                 </Tooltip>
                 <PopoverContent className="w-48 p-2" container={portalContainer}>
                     <div className="grid gap-1">
+                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('base-window-2-slider')}>Base Window (2 Slider)</Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('base-window-3-slider')}>Base Window (3 Slider)</Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('base-door-single')}>Base Door (Single)</Button>
+                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('base-door-double')}>Base Door (Double)</Button>
+                        <Separator className="my-1"/>
                         <Button variant="ghost" className="justify-start" onClick={() => onAddShape('rectangle')}>Rectangle Frame</Button>
-                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('triangle')}>Triangle</Button>
-                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('pentagon')}>Pentagon</Button>
-                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('hexagon')}>Hexagon</Button>
-                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('octagon')}>Octagon</Button>
-                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('circle')}>Circle</Button>
-                        <Button variant="ghost" className="justify-start" onClick={() => onAddShape('arch')}>Arch</Button>
                     </div>
                 </PopoverContent>
             </Popover>

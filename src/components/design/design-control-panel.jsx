@@ -11,6 +11,22 @@ import { Separator } from "@/components/ui/separator";
 export function DesignControlPanel({ designs, activeDesign, addDesign, removeDesign, selectDesign, updateDesignName, updateParameters }) {
     const parameters = activeDesign?.parameters;
     const warnings = activeDesign?.warnings ?? [];
+    const productType = parameters?.productType || 'window';
+
+    const applyTemplate = (template) => {
+        const templates = {
+            window_2_slider: { productType: 'window', system: '2-track', panels: 2, width: 1800, height: 1500 },
+            window_3_slider: { productType: 'window', system: '3-track', panels: 3, width: 2400, height: 1500 },
+            window_casement: { productType: 'window', system: 'casement', panels: 2, width: 1500, height: 1500 },
+            door_single: { productType: 'door', system: 'casement', panels: 1, width: 1000, height: 2200 },
+            door_double: { productType: 'door', system: 'casement', panels: 2, width: 1800, height: 2200 },
+            door_sliding_2: { productType: 'door', system: '2-track', panels: 2, width: 2400, height: 2200 },
+            door_sliding_3: { productType: 'door', system: '3-track', panels: 3, width: 3200, height: 2200 },
+        };
+        if (templates[template]) {
+            updateParameters(templates[template]);
+        }
+    };
     if (!parameters) {
         return (<div className="flex flex-col h-full bg-sidebar text-sidebar-foreground p-4 gap-6 overflow-y-auto">
                 <h2 className="font-headline text-2xl font-semibold text-sidebar-foreground tracking-tight">
@@ -47,6 +63,37 @@ export function DesignControlPanel({ designs, activeDesign, addDesign, removeDes
             <CardTitle className="text-lg font-headline text-sidebar-accent-foreground">System Configuration</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sidebar-foreground/80">
+                <div className="grid gap-2">
+                        <Label htmlFor="product-type">Product Type</Label>
+                        <Select value={productType} onValueChange={(value) => updateParameters({ productType: value })}>
+                            <SelectTrigger id="product-type" className="bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-border" suppressHydrationWarning>
+                                <SelectValue placeholder="Select product type"/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="window">Window</SelectItem>
+                                <SelectItem value="door">Door</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="template">Standard Template</Label>
+                        <Select onValueChange={applyTemplate}>
+                            <SelectTrigger id="template" className="bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-border" suppressHydrationWarning>
+                                <SelectValue placeholder="Apply a template"/>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="window_2_slider">Window - 2 Slider</SelectItem>
+                                <SelectItem value="window_3_slider">Window - 3 Slider</SelectItem>
+                                <SelectItem value="window_casement">Window - Casement</SelectItem>
+                                <SelectItem value="door_single">Door - Single Swing</SelectItem>
+                                <SelectItem value="door_double">Door - Double Swing</SelectItem>
+                                <SelectItem value="door_sliding_2">Door - 2 Slider</SelectItem>
+                                <SelectItem value="door_sliding_3">Door - 3 Slider</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
         <div className="grid gap-2">
             <Label htmlFor="system">System</Label>
             <Select value={parameters.system} onValueChange={(value) => updateParameters({ system: value })}>
